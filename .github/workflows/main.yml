@@ -5,8 +5,8 @@ on:
 
 jobs:
   setup-ngrok:
-    runs-on: windows-2025
-    timeout-minutes: 350  # Max allowed: 6 hours
+    runs-on: windows-latest
+    timeout-minutes: 360  # Max allowed: 6 hours
 
     steps:
       - name: Checkout repository
@@ -25,11 +25,11 @@ jobs:
             Start-Sleep -Seconds 5
             $retry--
           }
-          if (!(Test-Path ngrok.zip)) { throw "âŒ Failed to download ngrok after retries." }
+          if (!(Test-Path ngrok.zip)) { throw "❌ Failed to download ngrok after retries." }
       - name: Extract ngrok
         run: |
           Expand-Archive ngrok.zip -DestinationPath .
-          if (!(Test-Path .\ngrok.exe)) { throw "âŒ Failed to extract ngrok." }
+          if (!(Test-Path .\ngrok.exe)) { throw "❌ Failed to extract ngrok." }
       - name: Update ngrok
         run: .\ngrok.exe update
 
@@ -61,17 +61,16 @@ jobs:
             $response = Invoke-RestMethod -Uri $apiUrl
             $tcpAddr = ($response.tunnels | Where-Object { $_.proto -eq "tcp" }).public_url
             if ($tcpAddr) {
-              Write-Output "âœ… Connect using: $tcpAddr"
+              Write-Output "✅ Connect using: $tcpAddr"
             } else {
-              Write-Output "âš ï¸ Unable to fetch tunnel info yet."
+              Write-Output "⚠️ Unable to fetch tunnel info yet."
             }
           } catch {
-            Write-Output "âš ï¸ Ngrok API not responding."
+            Write-Output "⚠️ Ngrok API not responding."
           }
       - name: Keep Alive (6 hours)
         run: |
           for ($i = 0; $i -lt 72; $i++) {
-            Write-Host "â³ Still alive... Hour: $($i * 5) minutes"
+            Write-Host "⏳ Still alive... Hour: $($i * 5) minutes"
             Start-Sleep -Seconds 300
           }
-        continue-on-error: false
