@@ -1,25 +1,55 @@
-name: RDP Connection via ngrok
+name: RDP Connection with Custom Script
 
 on:
   workflow_dispatch:
 
 jobs:
-  build:
-    runs-on: windows-2025
-    timeout-minutes: 350
-    steps:
-    - name: Set up ngrok
-      uses: cyb3rking/ngrok-rdp-action@master
-      with:
-        ngrok-token: ${{ secrets.NGROK_AUTH_TOKEN }}
-        username: 'runneradmin'
-        password: '12345678'
-        
-    - name: Display Connection Info
-      run: |
-        echo "### 💻 RDP Connection Details" >> $GITHUB_STEP_SUMMARY
-        echo "Please use the following details to connect via RDP:" >> $GITHUB_STEP_SUMMARY
-        echo "- **Address:** The address and port will be available in the 'Set up ngrok' step logs." >> $GITHUB_STEP_SUMMARY
-        echo "- **Username:** runneradmin" >> $GITHUB_STEP_SUMMARY
-        echo "- **Password:** YourSecurePasswordHere" >> $GITHUB_STEP_SUMMARY
+  rdp_job:
+    runs-on: windows-latest
 
+    steps:
+      - name: Enable RDP and start ngrok tunnel
+        env:
+          NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
+        run: |
+          # --- Part 1: Enable RDP ---
+          # Set a custom password for the runneradmin user
+          $password = "12345678"
+          net user runneradmin $password
+          
+          # Enable RDP in the registry
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
+          
+          # Allow RDP through the Windows Firewall
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+          
+          # Optional: Configure Network Level Authentication (NLA)
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
+
+          # --- Part 2: Setup and Run ngrok ---
+          # Download and unzip the ngrok agent
+          $ngrokUrl = "https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip"
+          $zipPath = "$pwd\ngrok.zip"
+          Invoke-WebRequest -Uri $ngrokUrl -OutFile $zipPath
+          Expand-Archive -Path $zipPath -DestinationPath $pwd -Force
+          
+          # Authenticate ngrok using the secret token
+          .\ngrok.exe authtoken $env:NGROK_AUTH_TOKEN
+
+          # Start ngrok and expose the RDP port (3389)
+          .\ngrok.exe tcp 3389 --log "ngrok.log" &
+          
+          # Wait for ngrok to start and get the public URL
+          Start-Sleep -Seconds 10
+          $publicUrl = Get-Content ngrok.log | Select-String "url=tcp" | ForEach-Object { $_.Line.split(" ")[-1].Trim('"') }
+
+          # --- Part 3: Display Connection Info ---
+          echo "### 💻 RDP Connection Details" >> $GITHUB_STEP_SUMMARY
+          echo "Please use the following details to connect via RDP:" >> $GITHUB_STEP_SUMMARY
+          echo "- **Address:** $publicUrl" >> $GITHUB_STEP_SUMMARY
+          echo "- **Username:** runneradmin" >> $GITHUB_STEP_SUMMARY
+          echo "- **Password:** YourSecurePasswordHere" >> $GITHUB_STEP_SUMMARY
+          echo "::error title=RDP session started::You can now connect to the RDP server. The job will remain active for 6 hours." >> $GITHUB_STEP_SUMMARY
+
+          # Keep the job from ending so you can connect
+          Start-Sleep -Seconds 21600 # Wait for 6 hours (60 * 60 * 6 = 21600)
