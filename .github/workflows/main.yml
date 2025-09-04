@@ -12,21 +12,25 @@ jobs:
         env:
           NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
         run: |
-          # --- Part 1: Enable RDP ---
+          # --- Part 1: Disable Windows Firewall ---
+          # Temporarily disable the Windows Firewall
+          netsh advfirewall set allprofiles state off
+          
+          # --- Part 2: Enable RDP ---
           # Set a custom password for the runneradmin user
-          $password = "P@ssw0rd!"
+          $password = "YourSecurePasswordHere"
           net user runneradmin $password
           
           # Enable RDP in the registry
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
           
-          # Allow RDP through the Windows Firewall
+          # Allow RDP through the Windows Firewall (this command is now redundant but harmless)
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
           
           # Optional: Configure Network Level Authentication (NLA)
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
 
-          # --- Part 2: Setup and Run ngrok ---
+          # --- Part 3: Setup and Run ngrok ---
           # Download and unzip the ngrok agent
           $ngrokUrl = "https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip"
           $zipPath = "$pwd\ngrok.zip"
@@ -43,7 +47,7 @@ jobs:
           Start-Sleep -Seconds 10
           $publicUrl = Get-Content ngrok.log | Select-String "url=tcp" | ForEach-Object { $_.Line.split(" ")[-1].Trim('"') }
 
-          # --- Part 3: Display Connection Info ---
+          # --- Part 4: Display Connection Info ---
           echo "### 💻 RDP Connection Details" >> $GITHUB_STEP_SUMMARY
           echo "Please use the following details to connect via RDP:" >> $GITHUB_STEP_SUMMARY
           echo "- **Address:** $publicUrl" >> $GITHUB_STEP_SUMMARY
