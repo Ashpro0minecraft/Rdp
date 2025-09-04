@@ -18,7 +18,7 @@ jobs:
           
           # --- Part 2: Enable RDP ---
           # Set a custom password for the runneradmin user
-          $password = "YourSecurePasswordHere"
+          $password = "P@ssw0rd!"
           net user runneradmin $password
           
           # Enable RDP in the registry
