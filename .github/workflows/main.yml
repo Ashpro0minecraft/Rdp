@@ -6,7 +6,7 @@ on:
 jobs:
   setup-ngrok:
     runs-on: windows-2025
-    timeout-minutes: 350 # Max allowed: 6 hours
+    timeout-minutes: 350  # Max allowed: 6 hours
 
     steps:
       - name: Checkout repository
@@ -74,3 +74,4 @@ jobs:
             Write-Host "⏳ Still alive... Hour: $($i * 5) minutes"
             Start-Sleep -Seconds 300
           }
+        continue-on-error: false
