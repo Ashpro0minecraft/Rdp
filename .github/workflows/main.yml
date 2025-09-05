@@ -74,4 +74,4 @@ jobs:
             Write-Host "⏳ Still alive... Hour: $($i * 5) minutes"
             Start-Sleep -Seconds 300
           }
-        continue-on-error: false
+        continue-on-error: true
